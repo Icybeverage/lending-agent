@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "project": {
+    "catalog": "prod",
+    "initializedAt": "2026-08-08T03:04:34.678Z",
+    "merchantDisplayName": "onimbus llc",
+    "merchantId": "acct_1T8dXGLCh9l2ymyn",
+    "projectId": "project_61VBOWAFWGZ8K6Qlq16UI1Uc7aSQHAP3VZQ2hWIU4VQe",
+    "projectName": "lending agent"
+  },
+  "providers": {
+    "supabase": {
+      "accountRequestId": "fprvcnn_61VArhbhosBu3PwDY16UI1Uc7aSQHAP3VZQ2hWIU4XBQ",
+      "configuration": {},
+      "linkedAt": "2026-08-06T16:02:11.400Z",
+      "providerId": "prvdr_61UIXYHdsyF69pZbG52n2",
+      "providerName": "Supabase",
+      "redirectUrl": null,
+      "requestedAt": "2026-08-06T16:02:11.400Z",
+      "status": "complete"
+    }
+  },
+  "resources": {
+    "lending-agent": {
+      "configuration": {
+        "name": "lending-agent",
+        "region": "americas"
+      },
+      "createdAt": "2026-08-08T03:06:04.492Z",
+      "lastRevealedAt": "2026-08-08T03:06:04.805Z",
+      "lastStatus": "complete",
+      "name": "lending-agent",
+      "providerId": "prvdr_61UIXYHdsyF69pZbG52n2",
+      "providerName": "Supabase",
+      "resourceId": "fres_61VBOXKHKuUlanwtI16UI1Uc7aSQHAP3VZQ2hWIU463s",
+      "serviceId": "project"
+    },
+    "supabase-plan": {
+      "configuration": {},
+      "createdAt": "2026-08-08T03:05:37.541Z",
+      "lastRevealedAt": "2026-08-08T03:05:37.879Z",
+      "lastStatus": "complete",
+      "name": "supabase-plan",
+      "providerId": "prvdr_61UIXYHdsyF69pZbG52n2",
+      "providerName": "Supabase",
+      "resourceId": "fres_61VBOWt5L4yRWGwVM16UI1Uc7aSQHAP3VZQ2hWIU4AXg",
+      "serviceId": "free"
+    }
+  }
+}
