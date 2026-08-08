@@ -104,7 +104,8 @@ Project systems:
 ## 8. Deployment and submission package
 
 - [x] Deploy the live `universal-lending` Edge Function against the existing `hive` project after credential setup.
-- [x] Deploy the frontend after adding the public `VITE_PRIVY_APP_ID` and approved Privy origins.
+- [x] Deploy the frontend with the public `VITE_PRIVY_APP_ID`.
+- [ ] Add `https://icybeverage.github.io` to the Privy app's production allowed origins and test sign-in in the browser.
 - [ ] Verify production environment variables, CORS, Privy allowed origins, webhook URLs, and Supabase function auth.
 - [ ] Record the live demo URL, repository URL, Stripe Project ID, Supabase project ref, and Privy app ID in a private handoff note.
 - [ ] Write the README: problem, user flow, architecture, provider roles, security model, setup, demo mode, and known limitations.
