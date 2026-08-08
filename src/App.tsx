@@ -86,7 +86,7 @@ export default function App() {
   const [message, setMessage] = useState("");
 
   const selectedAsset = useMemo(() => deliveryAssets.find(([symbol]) => symbol === deliveryAsset), [deliveryAsset]);
-  const walletAddress = wallets[0]?.address || user?.wallet?.address || "";
+  const walletAddress = wallets.find((candidate) => /^0x[a-fA-F0-9]{40}$/.test(candidate.address))?.address || user?.wallet?.address || "";
   const evmDelivery = ["ETH", "USDT", "USDC", "BNB", "AVAX"].includes(deliveryAsset);
   const effectiveDeliveryAddress = deliveryAddress.trim() || (evmDelivery ? walletAddress : "");
   const effectiveRepaymentAddress = repaymentAddress.trim() || walletAddress;
