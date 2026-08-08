@@ -73,3 +73,5 @@ Final leaderboard registration is a browser-only step at `https://projects.dev/h
 ## Live frontend
 
 The public demo is published from the `gh-pages` branch on GitHub Pages. The build uses the public Privy app ID and the live Supabase Edge Function URL; provider secrets remain only in Supabase.
+
+For live USD funding, `VITE_STRIPE_STANDALONE_ONRAMP=true` opens Stripe's hosted `crypto.link.com` flow with USD → USDC on Ethereum. Because this standalone flow is not bound to our backend session, the user must select the exact Privy Ethereum wallet and refresh the wallet balance before requesting a quote. Set it to `false` only after Stripe API Onramp access is approved and the session-based path is ready.
