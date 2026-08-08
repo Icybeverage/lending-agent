@@ -59,4 +59,4 @@ Final leaderboard registration is a browser-only step at `https://projects.dev/h
 
 ## Live frontend
 
-The public demo is deployed from GitHub Pages by `.github/workflows/deploy-pages.yml`. Configure the repository variable/secret `VITE_PRIVY_APP_ID` with the public Privy app ID and keep the Supabase provider secrets only in Supabase.
+The public demo is published from the `gh-pages` branch on GitHub Pages. The build uses the public Privy app ID and the live Supabase Edge Function URL; provider secrets remain only in Supabase.

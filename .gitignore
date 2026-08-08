@@ -2,6 +2,13 @@
 .projects/vault
 .projects/state.test.json
 .projects/state.local.test.json
+.projects/*.json
+.agents
+.claude
+.cursor
+AGENTS.md
+CLAUDE.md
+.cursorignore
 node_modules
 dist
 .env
