@@ -13,6 +13,8 @@ Project systems:
 - Confirmed Privy hackathon code: `privy-home-irl-sf-2026`
 - Product route: `/lend`
 - Participant leaderboard: https://projects.dev/hackathon-participants
+- Live demo: https://icybeverage.github.io/lending-agent/lend/
+- Public repository: https://github.com/Icybeverage/lending-agent
 - Delivery assets: BTC, ETH, USDT, USDC, SOL, BNB, XRP, ADA, DOGE, AVAX
 
 ## 0. Registration and scope lock
@@ -83,6 +85,7 @@ Project systems:
 ## 6. Frontend and demo surface
 
 - [x] Add the `/lend` universal lending UI with Privy auth, USD/USDC selection, ten-asset picker, live quotes, and provider explanation.
+- [x] Apply the MIT-licensed Vite/React shadcn dashboard template as the visual reference and publish the responsive site.
 - [ ] Show the routing decision and quote breakdown in plain language so judges can understand the backend orchestration.
 - [ ] Add a demo mode that uses deterministic provider fixtures and clearly labels simulated transactions.
 - [ ] Add accessibility, responsive mobile layout, loading states, retry actions, and transaction links where available.
@@ -101,13 +104,14 @@ Project systems:
 ## 8. Deployment and submission package
 
 - [x] Deploy the live `universal-lending` Edge Function against the existing `hive` project after credential setup.
-- [ ] Deploy the frontend after adding the public `VITE_PRIVY_APP_ID` and approved Privy origins.
+- [x] Deploy the frontend after adding the public `VITE_PRIVY_APP_ID` and approved Privy origins.
 - [ ] Verify production environment variables, CORS, Privy allowed origins, webhook URLs, and Supabase function auth.
 - [ ] Record the live demo URL, repository URL, Stripe Project ID, Supabase project ref, and Privy app ID in a private handoff note.
 - [ ] Write the README: problem, user flow, architecture, provider roles, security model, setup, demo mode, and known limitations.
 - [ ] Create an architecture diagram and a 2–3 minute demo script.
 - [ ] Record the demo showing Privy authentication, USD/USDC funding selection, Stripe Checkout card+crypto, delivery-asset choice, quote/routing explanation, loan status, and repayment.
 - [ ] Generate the Stripe Projects share artifact after the stack is finalized.
+- [x] Publish the live demo and repository handoff: `https://icybeverage.github.io/lending-agent/lend/` and `https://github.com/Icybeverage/lending-agent`.
 - [ ] Submit the project to the Privy hackathon leaderboard at `https://projects.dev/hackathon-participants` with code `privy-home-irl-sf-2026`, live URL, repository, demo video, screenshots, Stripe Projects share URL, and concise Privy integration explanation.
 - [ ] Save the submission confirmation and final submission snapshot.
 
