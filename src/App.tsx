@@ -89,7 +89,11 @@ export default function App() {
     if (user?.id) headers["x-privy-user-id"] = user.id;
     const response = await fetch(endpoint, { method: "POST", headers, body: JSON.stringify(body) });
     const payload = await response.json().catch(() => null);
-    if (!response.ok) throw new Error(payload?.error || "The lending service rejected the request.");
+    if (!response.ok) {
+      const provider = typeof payload?.provider === "string" ? `${payload.provider}: ` : "";
+      const providerCode = typeof payload?.providerCode === "string" ? ` (${payload.providerCode})` : "";
+      throw new Error(`${provider}${payload?.error || "The lending service rejected the request."}${providerCode}`);
+    }
     return payload;
   }
 
