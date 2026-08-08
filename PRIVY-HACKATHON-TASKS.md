@@ -15,7 +15,7 @@ Project systems:
 - Participant leaderboard: https://projects.dev/hackathon-participants
 - Live demo: https://icybeverage.github.io/lending-agent/lend/
 - Public repository: https://github.com/Icybeverage/lending-agent
-- Delivery assets: BTC, ETH, USDT, USDC, SOL, BNB, XRP, ADA, DOGE, AVAX
+- Delivery assets: BTC, ETH, USDT, USDC, SOL, BNB, XRP, SUI, DOGE, AVAX
 
 ## 0. Registration and scope lock
 
@@ -32,7 +32,7 @@ Project systems:
 - [x] Add Privy login with email/social/wallet sign-in.
 - [x] Create or connect the user wallet through Privy and show the active wallet and chain clearly.
 - [ ] Build `/lend`: funding amount, USD or USDC selection, destination cryptocurrency, network, collateral, and repayment preference.
-- [ ] Support exactly ten delivery assets in the first release: BTC, ETH, USDT, USDC, SOL, BNB, XRP, ADA, DOGE, and AVAX.
+- [ ] Support exactly ten delivery assets in the first release: BTC, ETH, USDT, USDC, SOL, BNB, XRP, SUI, DOGE, and AVAX.
 - [ ] Show an explicit quote summary: principal, exchange rate, provider fee, network fee, interest, total repayment, LTV, quote expiry, and estimated delivery time.
 - [x] Require a final confirmation before payment, wallet signing, or loan creation.
 - [ ] Provide visible states for quote pending, payment pending, loan pending, funded, repayment due, repaid, expired, failed, and refunded.

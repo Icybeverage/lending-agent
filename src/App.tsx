@@ -10,7 +10,7 @@ const deliveryAssets = [
   ["SOL", "Solana", "#b56cff", "solana"],
   ["BNB", "BNB Chain", "#f3ba2f", "bsc"],
   ["XRP", "XRP Ledger", "#d7e4e8", "xrp"],
-  ["ADA", "Cardano", "#3468d4", "ada"],
+  ["SUI", "Sui", "#6fbcf0", "sui"],
   ["DOGE", "Dogecoin", "#c2a633", "doge"],
   ["AVAX", "Avalanche", "#e84142", "avalanchec"],
 ] as const;
@@ -84,8 +84,9 @@ export default function App() {
 
   const selectedAsset = useMemo(() => deliveryAssets.find(([symbol]) => symbol === deliveryAsset), [deliveryAsset]);
   const walletAddress = wallets[0]?.address || user?.wallet?.address || "";
-  const effectiveDeliveryAddress = deliveryAddress.trim() || walletAddress;
-  const effectiveRepaymentAddress = repaymentAddress.trim() || effectiveDeliveryAddress;
+  const evmDelivery = ["ETH", "USDT", "USDC", "BNB", "AVAX"].includes(deliveryAsset);
+  const effectiveDeliveryAddress = deliveryAddress.trim() || (evmDelivery ? walletAddress : "");
+  const effectiveRepaymentAddress = repaymentAddress.trim() || walletAddress;
 
   async function callApi(body: Record<string, unknown>) {
     if (!endpoint) throw new Error("Set VITE_UNIVERSAL_LENDING_URL before using live lending.");
@@ -137,7 +138,10 @@ export default function App() {
         if (received > 0) {
           setFundingAsset("USDC");
           setAmount(String(received));
+          setOnramp(null);
           setMessage(`Stripe delivered ${received} USDC to your Privy wallet. Request a live loan quote next.`);
+        } else {
+          setMessage("Stripe marked the session complete but did not report a delivered USDC amount. Verify the transaction before requesting a loan.");
         }
       }
     } catch (error) {
@@ -229,20 +233,30 @@ export default function App() {
       setMessage("Use the returned provider deposit instructions for this network.");
       return;
     }
-    const wallet = wallets[0];
+    const wallet = wallets.find((candidate) => candidate.address.toLowerCase() === (application.deliveryAddress || "").toLowerCase());
     if (!wallet) {
-      setMessage("No Privy wallet is available.");
+      setMessage("The wallet that received the USDC collateral is not connected. Reconnect that wallet before sending collateral.");
+      return;
+    }
+    if (!/^0x[a-fA-F0-9]{40}$/.test(application.collateral.depositAddress)) {
+      setMessage("CoinRabbit returned an invalid Ethereum deposit address. Do not send collateral.");
       return;
     }
     setLoading(true);
     try {
+      await wallet.switchChain(1);
       const data = encodeFunctionData({
         abi: erc20TransferAbi,
         functionName: "transfer",
         args: [application.collateral.depositAddress as `0x${string}`, parseUnits(application.collateral.amount, 6)],
       });
-      await sendTransaction({ to: usdcEthereum, data, value: 0n }, { address: wallet.address });
-      setMessage("USDC collateral transaction submitted. Use refresh status after confirmations.");
+      const transaction = await sendTransaction({ to: usdcEthereum, data, value: 0n, chainId: 1 }, { address: wallet.address });
+      try {
+        await callApi({ action: "record_collateral", applicationId: application.applicationId, collateralTxHash: transaction.hash });
+        setMessage(`USDC collateral transaction submitted (${transaction.hash.slice(0, 10)}…). Use refresh status after confirmations.`);
+      } catch {
+        setMessage(`USDC was submitted (${transaction.hash.slice(0, 10)}…), but the lending record could not be updated. Keep this transaction hash and refresh status.`);
+      }
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "USDC transfer was not submitted.");
     } finally {
@@ -268,16 +282,16 @@ export default function App() {
           <div className="panel-heading"><div><span className="step">01</span><h2>Set your funding</h2></div><span className="live-pill">LIVE PROVIDERS</span></div>
           <div className="field-label">I want to fund with</div>
           <div className="segmented">
-            {(["USD", "USDC"] as FundingAsset[]).map((asset) => <button key={asset} className={fundingAsset === asset ? "selected" : ""} onClick={() => { setFundingAsset(asset); setQuote(null); setApplication(null); setAgreedToTos(false); }}>{asset}<small>{asset === "USD" ? "Stripe Onramp" : "Privy wallet"}</small></button>)}
+            {(["USD", "USDC"] as FundingAsset[]).map((asset) => <button key={asset} className={fundingAsset === asset ? "selected" : ""} onClick={() => { setFundingAsset(asset); setOnramp(null); setQuote(null); setApplication(null); setAgreedToTos(false); }}>{asset}<small>{asset === "USD" ? "Stripe Onramp" : "Privy wallet"}</small></button>)}
           </div>
           <label className="field-label" htmlFor="amount">Funding amount</label>
-          <div className="amount-input"><span>{fundingAsset}</span><input id="amount" inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} /><span className="amount-suffix">≈ ${Number(amount || 0).toLocaleString()}</span></div>
+          <div className="amount-input"><span>{fundingAsset}</span><input id="amount" inputMode="decimal" value={amount} onChange={(event) => { setAmount(event.target.value); setQuote(null); setApplication(null); setAgreedToTos(false); }} /><span className="amount-suffix">≈ ${Number(amount || 0).toLocaleString()}</span></div>
           <div className="route-details">
             <div className="route-details-heading"><span>SETTLEMENT DETAILS</span><small>USDC collateral on Ethereum</small></div>
             <label className="field-label" htmlFor="delivery-address">Delivery wallet</label>
             <input className="address-input" id="delivery-address" value={deliveryAddress} onChange={(event) => { setDeliveryAddress(event.target.value); setQuote(null); setApplication(null); }} placeholder={walletAddress || "Connect Privy first"} spellCheck={false} />
             <label className="field-label" htmlFor="repayment-address">Repayment / return wallet <span>OPTIONAL</span></label>
-            <input className="address-input" id="repayment-address" value={repaymentAddress} onChange={(event) => setRepaymentAddress(event.target.value)} placeholder="Same as delivery wallet" spellCheck={false} />
+            <input className="address-input" id="repayment-address" value={repaymentAddress} onChange={(event) => { setRepaymentAddress(event.target.value); setQuote(null); setApplication(null); setAgreedToTos(false); }} placeholder="Same as Privy Ethereum wallet" spellCheck={false} />
             <p className="route-note">Stripe delivers USDC to the delivery wallet. Keep USDC for collateral and ETH for network fees before creating the loan.</p>
           </div>
           <div className="field-label asset-label"><span>Deliver to me as</span><span className="asset-count">10 ASSETS</span></div>
@@ -292,7 +306,7 @@ export default function App() {
           <div className="panel-heading"><div><span className="step">02</span><h2>Your live route</h2></div><span className="quote-lock">⌁</span></div>
           {onramp && fundingAsset === "USD" && <div className="quote-content">
             <div className="quote-result"><span className="result-label">STRIPE ONRAMP</span><strong>{onramp.status.replaceAll("_", " ")}</strong><span className="result-sub">USDC → your Privy Ethereum wallet</span></div>
-            {onramp.redirectUrl ? <a className="secondary-button" href={onramp.redirectUrl}>Continue in Stripe Onramp <span>↗</span></a> : <p className="message">Stripe returned no hosted redirect URL. Use the configured embedded Onramp client secret.</p>}
+            {onramp.redirectUrl ? <a className="secondary-button" href={onramp.redirectUrl}>Continue in Stripe Onramp <span>↗</span></a> : <p className="message">Stripe did not return a hosted checkout URL for this session. Contact Stripe Onramp support or switch to USDC funding.</p>}
             <button className="secondary-button" onClick={() => void refreshOnramp()} disabled={loading}>Refresh Stripe status <span>↻</span></button>
           </div>}
           {!onramp && !quote && <div className="empty-quote"><div className="empty-orbit">◎</div><h3>Live quote, then live loan.</h3><p>USDC quotes call CoinRabbit and ChangeNOW. USD opens Stripe’s USDC Onramp first.</p><div className="provider-row"><span>Stripe</span><span>→</span><span>CoinRabbit</span><span>→</span><span>ChangeNOW</span></div></div>}
@@ -306,7 +320,7 @@ export default function App() {
         </div>
       </section>
 
-      <footer><span>Built for `privy-home-irl-sf-2026`</span><span>USD / USDC → BTC · ETH · USDT · USDC · SOL · BNB · XRP · ADA · DOGE · AVAX</span></footer>
+      <footer><span>Built for `privy-home-irl-sf-2026`</span><span>USD / USDC → BTC · ETH · USDT · USDC · SOL · BNB · XRP · SUI · DOGE · AVAX</span></footer>
     </main>
   );
 }

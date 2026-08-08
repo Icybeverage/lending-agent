@@ -11,7 +11,7 @@ npm run dev
 
 Open `http://127.0.0.1:4173/lend/`.
 
-The UI supports USD or USDC funding selection and all ten delivery assets: BTC, ETH, USDT, USDC, SOL, BNB, XRP, ADA, DOGE, and AVAX. USD uses Stripe Onramp to deliver USDC to the user’s Privy Ethereum wallet before collateral is sent to CoinRabbit.
+The UI supports USD or USDC funding selection and all ten delivery assets: BTC, ETH, USDT, USDC, SOL, BNB, XRP, SUI, DOGE, and AVAX. USD uses Stripe Onramp to deliver USDC to the user’s Privy Ethereum wallet before collateral is sent to CoinRabbit.
 
 Set these public frontend variables in a local `.env` or deployment environment:
 
