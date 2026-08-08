@@ -1,0 +1,1 @@
+import{Gt as e}from"./ccip-Ci3rA1dO.js";function t(t,n=`wei`){return e(t,n)}export{t};
