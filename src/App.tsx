@@ -117,7 +117,7 @@ function usdcRawFor(value: string | number) {
 }
 
 export default function App() {
-  const { ready, authenticated, login, user, getAccessToken } = usePrivy();
+  const { ready, authenticated, login, logout, user, getAccessToken } = usePrivy();
   const { wallets } = useWallets();
   const { sendTransaction } = useSendTransaction();
   const sandboxApi = useMemo(() => createSandboxApi(), []);
@@ -221,6 +221,19 @@ export default function App() {
       throw new Error(`${provider}${payload?.error || "The lending service rejected the request."}${providerCode}`);
     }
     return payload;
+  }
+
+  async function logoutWallet() {
+    setShowAddFunds(false);
+    setOnramp(null);
+    setCompletedOnrampSessionId("");
+    setQuote(null);
+    setApplication(null);
+    setBalances(null);
+    setBalanceError("");
+    setAgreedToTos(false);
+    setMessage("");
+    await logout();
   }
 
   async function startOnramp() {
@@ -457,7 +470,7 @@ export default function App() {
     <main className="shell">
       <nav className="nav">
         <div className="brand"><span className="brand-mark">L</span><span>Lending Agent</span></div>
-        <div className="nav-actions"><span className="status-dot" /> {sandboxMode ? "NO-PAYMENT SANDBOX" : "Live routing"} {isAuthenticated ? <span>{walletAddress.slice(0, 6)}…{walletAddress.slice(-4)}</span> : <button className="ghost-button" onClick={() => void login()} disabled={!ready}>Connect Privy</button>}</div>
+        <div className="nav-actions"><span className="status-dot" /> {sandboxMode ? "NO-PAYMENT SANDBOX" : "Live routing"} {isAuthenticated ? <><span>{walletAddress.slice(0, 6)}…{walletAddress.slice(-4)}</span>{!sandboxMode && <button className="ghost-button" onClick={() => void logoutWallet()}>Log out</button>}</> : <button className="ghost-button" onClick={() => void login()} disabled={!ready}>Connect Privy</button>}</div>
       </nav>
 
       <section className="hero">
