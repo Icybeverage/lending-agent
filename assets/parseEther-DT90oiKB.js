@@ -1,0 +1,1 @@
+import{Gt as e}from"./ccip-CVg39-eR.js";function t(t,n=`wei`){return e(t,n)}export{t};
