@@ -37,6 +37,12 @@ h2 { margin: 0; font-size: 20px; letter-spacing: -.04em; }
 .amount-input span { color: #b8f2b0; font: 500 11px "DM Mono", monospace; }
 .amount-input input { width: 100%; border: 0; outline: 0; color: #f2fff5; background: transparent; font-size: 32px; letter-spacing: -.06em; }
 .amount-suffix { color: #6e9a83 !important; white-space: nowrap; }
+.route-details { margin-top: 24px; padding: 14px; border: 1px solid #28493d; border-radius: 10px; background: rgba(8, 24, 18, .55); }
+.route-details-heading { display: flex; justify-content: space-between; gap: 12px; color: #b8f2b0; font: 500 10px "DM Mono", monospace; letter-spacing: .08em; }
+.route-details-heading small, .field-label span { color: #6e9a83; font: 9px "DM Mono", monospace; letter-spacing: .06em; }
+.address-input { width: 100%; border: 1px solid #315648; border-radius: 7px; outline: 0; padding: 11px; color: #e4f5e9; background: #0b1d17; font: 11px "DM Mono", monospace; }
+.address-input:focus { border-color: #b8f2b0; box-shadow: 0 0 0 1px #b8f2b0; }
+.route-note { margin: 11px 0 0; color: #789b88; font: 10px/1.5 "DM Mono", monospace; }
 .asset-label { margin-top: 28px; }
 .asset-count { color: #6e9a83; }
 .asset-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 7px; }
