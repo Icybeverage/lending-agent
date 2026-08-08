@@ -33,6 +33,33 @@ h2 { margin: 0; font-size: 20px; letter-spacing: -.04em; }
 .segmented button { padding: 13px 15px; font-weight: 600; }
 .segmented button small, .asset-card small { display: block; color: #789b88; font: 10px "DM Mono", monospace; margin-top: 5px; }
 .segmented button.selected, .asset-card.selected { border-color: #b8f2b0; background: #183629; box-shadow: inset 0 0 0 1px #b8f2b0; }
+.wallet-card { margin-top: 20px; padding: 15px; border: 1px solid #3f6a51; border-radius: 10px; background: linear-gradient(135deg, rgba(24, 54, 41, .95), rgba(10, 29, 22, .9)); }
+.wallet-card-empty { display: grid; gap: 8px; }
+.wallet-card-empty strong { color: #e4f5e9; font-size: 13px; }
+.wallet-card-empty small { color: #789b88; font: 10px/1.5 "DM Mono", monospace; }
+.wallet-card-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.wallet-card-heading > div { display: grid; gap: 6px; }
+.wallet-card-heading strong { color: #f1fff4; font: 500 14px "DM Mono", monospace; }
+.wallet-card-heading .ghost-button { padding: 7px 9px; font: 10px "DM Mono", monospace; }
+.balance-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 15px; }
+.balance-grid > div { display: grid; gap: 4px; padding: 11px; border: 1px solid #315648; border-radius: 8px; background: rgba(7, 17, 15, .42); }
+.balance-grid span, .balance-grid small { color: #789b88; font: 9px "DM Mono", monospace; }
+.balance-grid strong { color: #b8f2b0; font-size: 16px; letter-spacing: -.04em; }
+.wallet-readiness { display: flex; align-items: center; gap: 7px; margin-top: 12px; color: #ffcf9d; font: 10px "DM Mono", monospace; }
+.wallet-readiness small { margin-left: auto; color: #6e9a83; font-size: 9px; }
+.wallet-readiness.ready { color: #b8f2b0; }
+.readiness-dot { width: 6px; height: 6px; flex: 0 0 6px; border-radius: 50%; background: #ffb26e; }
+.wallet-readiness.ready .readiness-dot { background: #b8f2b0; box-shadow: 0 0 10px #b8f2b0; }
+.wallet-error, .action-blocker { margin: 9px 0 0; color: #ffb5a7; font: 10px/1.5 "DM Mono", monospace; }
+.add-funds-button { margin-top: 13px; }
+.add-funds-panel { display: grid; gap: 10px; margin-top: 10px; padding: 12px; border: 1px dashed #527b65; border-radius: 8px; background: rgba(7, 17, 15, .38); }
+.add-funds-panel > div:first-child { display: grid; gap: 4px; }
+.add-funds-panel strong { color: #e4f5e9; font-size: 12px; }
+.add-funds-panel small { color: #789b88; font: 10px/1.45 "DM Mono", monospace; }
+.add-funds-panel code { overflow-wrap: anywhere; color: #b8f2b0; font: 10px "DM Mono", monospace; }
+.add-funds-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.add-funds-actions .secondary-button { margin-top: 0; padding: 10px; }
+.action-blocker { display: block; }
 .amount-input { display: flex; gap: 10px; align-items: center; border-bottom: 1px solid #456a5b; padding: 6px 0 10px; }
 .amount-input span { color: #b8f2b0; font: 500 11px "DM Mono", monospace; }
 .amount-input input { width: 100%; border: 0; outline: 0; color: #f2fff5; background: transparent; font-size: 32px; letter-spacing: -.06em; }
@@ -79,4 +106,4 @@ h2 { margin: 0; font-size: 20px; letter-spacing: -.04em; }
 .trust-note span { color: #b8f2b0; }
 footer { justify-content: space-between; gap: 20px; padding-top: 21px; color: #587c6b; font: 10px "DM Mono", monospace; }
 @media (max-width: 800px) { .shell { padding: 20px; } .nav-actions { font-size: 0; gap: 7px; } .nav-actions .ghost-button { font-size: 11px; } .hero { padding: 65px 0 40px; } .workspace { grid-template-columns: 1fr; } footer { align-items: flex-start; flex-direction: column; } }
-@media (max-width: 460px) { .asset-grid { grid-template-columns: repeat(2, 1fr); } .asset-card:nth-child(odd) { grid-column: span 1; } .amount-suffix { display: none; } }
+@media (max-width: 460px) { .asset-grid { grid-template-columns: repeat(2, 1fr); } .asset-card:nth-child(odd) { grid-column: span 1; } .amount-suffix { display: none; } .balance-grid, .add-funds-actions { grid-template-columns: 1fr; } .wallet-readiness { align-items: flex-start; flex-wrap: wrap; } .wallet-readiness small { width: 100%; margin-left: 13px; } }
