@@ -3,6 +3,7 @@
 .projects/state.test.json
 .projects/state.local.test.json
 .projects/*.json
+!.projects/state.json
 .agents
 .claude
 .cursor
