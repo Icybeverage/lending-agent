@@ -85,6 +85,10 @@ h2 { margin: 0; font-size: 20px; letter-spacing: -.04em; }
 .empty-quote p { max-width: 280px; color: #789b88; line-height: 1.5; font-size: 13px; }
 .provider-row { gap: 9px; color: #b8f2b0; font: 11px "DM Mono", monospace; }
 .quote-content { padding: 3px 0 19px; }
+.standalone-onramp-note { display: grid; gap: 7px; margin-top: 18px; padding: 13px; border: 1px dashed #527b65; border-radius: 8px; background: rgba(7, 17, 15, .38); }
+.standalone-onramp-note strong { color: #e4f5e9; font-size: 12px; }
+.standalone-onramp-note code { overflow-wrap: anywhere; color: #b8f2b0; font: 10px/1.45 "DM Mono", monospace; }
+.standalone-onramp-note small { color: #789b88; font: 10px/1.45 "DM Mono", monospace; }
 .quote-result { border: 1px solid #3f6a51; border-radius: 10px; padding: 18px; background: #122d20; }
 .result-label { color: #8fbd9e; }
 .quote-result strong { display: block; margin-top: 9px; color: #b8f2b0; font-size: 30px; letter-spacing: -.07em; }

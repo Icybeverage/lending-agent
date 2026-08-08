@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { usePrivy, useSendTransaction, useWallets } from "@privy-io/react-auth";
 import { encodeFunctionData, formatUnits, parseUnits } from "viem";
+import { createSandboxApi, SANDBOX_TX_HASH, SANDBOX_WALLET_ADDRESS } from "./sandboxFlow";
 
 const deliveryAssets = [
   ["BTC", "Bitcoin", "#f7931a", "bitcoin"],
@@ -68,6 +69,8 @@ type Application = {
 };
 
 const endpoint = import.meta.env.VITE_UNIVERSAL_LENDING_URL as string | undefined;
+const sandboxMode = import.meta.env.VITE_LENDING_SANDBOX === "true";
+const standaloneOnrampMode = import.meta.env.VITE_STRIPE_STANDALONE_ONRAMP !== "false";
 const usdcEthereum = "0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48" as `0x${string}`;
 const minimumEthForCollateral = parseUnits("0.0001", 18);
 const erc20TransferAbi = [{
@@ -114,10 +117,42 @@ function usdcRawFor(value: string | number) {
   }
 }
 
+let stripeStandaloneScript: Promise<void> | null = null;
+
+function loadStripeStandaloneScript() {
+  if (window.StripeOnramp) return Promise.resolve();
+  if (stripeStandaloneScript) return stripeStandaloneScript;
+  stripeStandaloneScript = new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = "https://crypto-js.stripe.com/crypto-onramp-outer.js";
+    script.async = true;
+    script.onload = () => window.StripeOnramp ? resolve() : reject(new Error("Stripe hosted Onramp loaded without its SDK."));
+    script.onerror = () => reject(new Error("Stripe hosted Onramp could not be loaded."));
+    document.head.appendChild(script);
+  });
+  return stripeStandaloneScript;
+}
+
+async function createStandaloneOnrampUrl(amount: string) {
+  await loadStripeStandaloneScript();
+  const standalone = window.StripeOnramp?.Standalone({
+    source_currency: "usd",
+    amount: { source_amount: amount },
+    destination_currency: "usdc",
+    destination_network: "ethereum",
+    destination_currencies: ["usdc"],
+    destination_networks: ["ethereum"],
+  });
+  const url = standalone?.getUrl();
+  if (!url) throw new Error("Stripe did not return a hosted Onramp URL.");
+  return url;
+}
+
 export default function App() {
-  const { ready, authenticated, login, user, getAccessToken } = usePrivy();
+  const { ready, authenticated, login, logout, user, getAccessToken } = usePrivy();
   const { wallets } = useWallets();
   const { sendTransaction } = useSendTransaction();
+  const sandboxApi = useMemo(() => createSandboxApi(), []);
   const [fundingAsset, setFundingAsset] = useState<FundingAsset>("USDC");
   const [amount, setAmount] = useState("500");
   const [deliveryAsset, setDeliveryAsset] = useState("ETH");
@@ -125,6 +160,7 @@ export default function App() {
   const [repaymentAddress, setRepaymentAddress] = useState("");
   const [quote, setQuote] = useState<Quote | null>(null);
   const [onramp, setOnramp] = useState<Onramp | null>(null);
+  const [standaloneOnrampUrl, setStandaloneOnrampUrl] = useState<string | null>(null);
   const [completedOnrampSessionId, setCompletedOnrampSessionId] = useState("");
   const [application, setApplication] = useState<Application | null>(null);
   const [balances, setBalances] = useState<WalletBalances | null>(null);
@@ -137,15 +173,16 @@ export default function App() {
 
   const selectedAsset = useMemo(() => deliveryAssets.find(([symbol]) => symbol === deliveryAsset), [deliveryAsset]);
   const fundingWallet = wallets.find((candidate) => isEvmAddress(candidate.address));
-  const walletAddress = fundingWallet?.address || "";
+  const walletAddress = fundingWallet?.address || (sandboxMode ? SANDBOX_WALLET_ADDRESS : "");
+  const isAuthenticated = authenticated || sandboxMode;
   const evmDelivery = ["ETH", "USDT", "USDC", "BNB", "AVAX"].includes(deliveryAsset);
   const effectiveDeliveryAddress = deliveryAddress.trim() || (evmDelivery ? walletAddress : "");
   const effectiveRepaymentAddress = repaymentAddress.trim() || walletAddress;
   const requestedUsdcRaw = usdcRawFor(amount);
   const hasUsdcBalance = Boolean(balances && requestedUsdcRaw !== null && BigInt(balances.usdcRaw) >= requestedUsdcRaw);
   const hasGasBalance = Boolean(balances && BigInt(balances.ethRaw) >= minimumEthForCollateral);
-  const walletReady = Boolean(authenticated && walletAddress && balances && !balanceError && hasUsdcBalance && hasGasBalance);
-  const walletReadiness = !authenticated
+  const walletReady = Boolean(isAuthenticated && walletAddress && balances && !balanceError && hasUsdcBalance && hasGasBalance);
+  const walletReadiness = !isAuthenticated
     ? "Sign in with Privy to bind a funding wallet"
     : !walletAddress
       ? "Connect a Privy Ethereum wallet"
@@ -160,6 +197,12 @@ export default function App() {
               : "Funding wallet ready for the live flow";
 
   async function refreshBalances() {
+    if (sandboxMode) {
+      const next = { ethRaw: "10000000000000000", usdcRaw: "1000000000", eth: "0.01", usdc: "1000", checkedAt: Date.now() };
+      setBalances(next);
+      setBalanceError("");
+      return next;
+    }
     if (!authenticated || !fundingWallet || !walletAddress) {
       setBalances(null);
       setBalanceError("");
@@ -197,6 +240,7 @@ export default function App() {
   }
 
   async function callApi(body: Record<string, unknown>) {
+    if (sandboxMode) return await sandboxApi.call(body);
     if (!endpoint) throw new Error("Set VITE_UNIVERSAL_LENDING_URL before using live lending.");
     const accessToken = await getAccessToken();
     const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -212,8 +256,27 @@ export default function App() {
     return payload;
   }
 
+  async function logoutWallet() {
+    setLoading(false);
+    setShowAddFunds(false);
+    setOnramp(null);
+    setStandaloneOnrampUrl(null);
+    setCompletedOnrampSessionId("");
+    setQuote(null);
+    setApplication(null);
+    setBalances(null);
+    setBalanceError("");
+    setAgreedToTos(false);
+    setMessage("");
+    try {
+      await logout();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Privy could not log out this wallet.");
+    }
+  }
+
   async function startOnramp() {
-    if (!authenticated) {
+    if (!isAuthenticated) {
       await login();
       return;
     }
@@ -225,6 +288,13 @@ export default function App() {
     setMessage("");
     try {
       setCompletedOnrampSessionId("");
+      if (!sandboxMode && standaloneOnrampMode) {
+        const url = await createStandaloneOnrampUrl(amount);
+        setOnramp(null);
+        setStandaloneOnrampUrl(url);
+        setMessage("Stripe hosted Onramp is ready. Use the exact Privy Ethereum wallet shown below, then refresh the wallet balance here.");
+        return;
+      }
       const payload = await callApi({ action: "onramp", fundingAmount: amount, walletAddress, repaymentAddress: effectiveRepaymentAddress });
       setOnramp(payload.onramp as Onramp);
       setMessage("Stripe created the USDC purchase session. Complete it, then refresh the session status.");
@@ -235,11 +305,33 @@ export default function App() {
     }
   }
 
+  async function verifyStandaloneFunding() {
+    setLoading(true);
+    setMessage("");
+    try {
+      const nextBalances = await refreshBalances();
+      if (!nextBalances) {
+        setMessage("Connect the same Privy Ethereum wallet that received the Stripe USDC, then refresh again.");
+        return;
+      }
+      setFundingAsset("USDC");
+      setStandaloneOnrampUrl(null);
+      setQuote(null);
+      setApplication(null);
+      setAgreedToTos(false);
+      setMessage(`Privy balance refreshed: ${nextBalances.usdc} USDC. Enter the exact USDC amount delivered by Stripe before requesting a quote.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to verify the Stripe wallet funding.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function refreshOnramp() {
     if (!onramp) return;
     setLoading(true);
     try {
-      const payload = await callApi({ action: "status", stripeOnrampSessionId: onramp.sessionId, walletAddress });
+      const payload = await callApi({ action: "status", stripeOnrampSessionId: onramp.sessionId, walletAddress, fundingAmount: amount });
       const next = { ...onramp, ...payload.onramp } as Onramp;
       setOnramp(next);
       if (next.status === "fulfillment_complete") {
@@ -271,7 +363,7 @@ export default function App() {
   }
 
   async function getQuote() {
-    if (!authenticated) {
+    if (!isAuthenticated) {
       await login();
       return;
     }
@@ -385,6 +477,19 @@ export default function App() {
       setMessage(`Collateral was already submitted (${application.collateralTxHash.slice(0, 10)}…). Refresh provider status for confirmation.`);
       return;
     }
+    if (sandboxMode) {
+      setLoading(true);
+      try {
+        const payload = await callApi({ action: "record_collateral", applicationId: application.applicationId, collateralTxHash: SANDBOX_TX_HASH });
+        setApplication((current) => current ? { ...current, collateralTxHash: payload.collateral?.collateralTxHash || SANDBOX_TX_HASH, status: "collateral_submitted" } : current);
+        setMessage("Sandbox collateral recorded. No wallet transaction or payment was submitted.");
+      } catch (error) {
+        setMessage(error instanceof Error ? error.message : "Unable to record the sandbox collateral.");
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
     const wallet = wallets.find((candidate) => candidate.address.toLowerCase() === (application.fundingWalletAddress || walletAddress).toLowerCase());
     if (!wallet) {
       setMessage("The wallet that received the USDC collateral is not connected. Reconnect that wallet before sending collateral.");
@@ -433,7 +538,7 @@ export default function App() {
     <main className="shell">
       <nav className="nav">
         <div className="brand"><span className="brand-mark">L</span><span>Lending Agent</span></div>
-        <div className="nav-actions"><span className="status-dot" /> Live routing {authenticated ? <span>{walletAddress.slice(0, 6)}…{walletAddress.slice(-4)}</span> : <button className="ghost-button" onClick={() => void login()} disabled={!ready}>Connect Privy</button>}</div>
+        <div className="nav-actions"><span className="status-dot" /> {sandboxMode ? "NO-PAYMENT SANDBOX" : "Live routing"} {isAuthenticated ? <><span>{walletAddress.slice(0, 6)}…{walletAddress.slice(-4)}</span>{!sandboxMode && <button className="ghost-button" onClick={() => void logoutWallet()}>Log out</button>}</> : <button className="ghost-button" onClick={() => void login()} disabled={!ready}>Connect Privy</button>}</div>
       </nav>
 
       <section className="hero">
@@ -444,12 +549,12 @@ export default function App() {
 
       <section className="workspace">
         <div className="panel request-panel">
-          <div className="panel-heading"><div><span className="step">01</span><h2>Set your funding</h2></div><span className="live-pill">LIVE PROVIDERS</span></div>
+          <div className="panel-heading"><div><span className="step">01</span><h2>Set your funding</h2></div><span className="live-pill">{sandboxMode ? "NO-PAYMENT SANDBOX" : "LIVE PROVIDERS"}</span></div>
           <div className="field-label">I want to fund with</div>
           <div className="segmented">
-            {(["USD", "USDC"] as FundingAsset[]).map((asset) => <button key={asset} className={fundingAsset === asset ? "selected" : ""} onClick={() => { setFundingAsset(asset); setOnramp(null); setCompletedOnrampSessionId(""); setQuote(null); setApplication(null); setAgreedToTos(false); }}>{asset}<small>{asset === "USD" ? "Stripe Onramp" : "Privy wallet"}</small></button>)}
+            {(["USD", "USDC"] as FundingAsset[]).map((asset) => <button key={asset} className={fundingAsset === asset ? "selected" : ""} onClick={() => { setFundingAsset(asset); setOnramp(null); setStandaloneOnrampUrl(null); setCompletedOnrampSessionId(""); setQuote(null); setApplication(null); setAgreedToTos(false); }}>{asset}<small>{asset === "USD" ? "Stripe Onramp" : "Privy wallet"}</small></button>)}
           </div>
-          {authenticated && walletAddress ? <div className="wallet-card">
+          {isAuthenticated && walletAddress ? <div className="wallet-card">
             <div className="wallet-card-heading"><div><span className="result-label">PRIVY FUNDING WALLET</span><strong>{walletAddress.slice(0, 8)}…{walletAddress.slice(-6)}</strong></div><button className="ghost-button" onClick={() => void refreshBalances()} disabled={balanceLoading}>{balanceLoading ? "Reading…" : "Refresh"}</button></div>
             <div className="balance-grid">
               <div><span>USDC available</span><strong>{balances ? `${balances.usdc} USDC` : "—"}</strong><small>Principal funding</small></div>
@@ -461,7 +566,7 @@ export default function App() {
             {showAddFunds && <div className="add-funds-panel"><div><strong>Fund this exact wallet</strong><small>Stripe sends USDC here. Direct deposits must use USDC on Ethereum.</small></div><div className="add-funds-actions"><button className="secondary-button" onClick={() => void startOnramp()} disabled={loading}>Buy USDC with Stripe <span>↗</span></button><button className="secondary-button" onClick={() => void copyFundingAddress()}>Copy wallet address <span>⧉</span></button></div><code>{walletAddress}</code></div>}
           </div> : <div className="wallet-card wallet-card-empty"><span className="result-label">PRIVY FUNDING WALLET</span><strong>Connect the wallet that will receive USDC and send collateral.</strong><small>Stripe, the backend, and the collateral transaction are all bound to the same Ethereum wallet.</small><button className="secondary-button" onClick={() => void login()} disabled={!ready}>Connect Privy <span>→</span></button></div>}
           <label className="field-label" htmlFor="amount">Funding amount</label>
-          <div className="amount-input"><span>{fundingAsset}</span><input id="amount" inputMode="decimal" value={amount} onChange={(event) => { setAmount(event.target.value); setCompletedOnrampSessionId(""); setQuote(null); setApplication(null); setAgreedToTos(false); }} /><span className="amount-suffix">≈ ${Number(amount || 0).toLocaleString()}</span></div>
+          <div className="amount-input"><span>{fundingAsset}</span><input id="amount" inputMode="decimal" value={amount} onChange={(event) => { setAmount(event.target.value); setStandaloneOnrampUrl(null); setCompletedOnrampSessionId(""); setQuote(null); setApplication(null); setAgreedToTos(false); }} /><span className="amount-suffix">≈ ${Number(amount || 0).toLocaleString()}</span></div>
           <div className="route-details">
             <div className="route-details-heading"><span>SETTLEMENT DETAILS</span><small>USDC collateral on Ethereum</small></div>
             <label className="field-label" htmlFor="delivery-address">Delivery wallet</label>
@@ -480,17 +585,24 @@ export default function App() {
 
         <div className="panel quote-panel">
           <div className="panel-heading"><div><span className="step">02</span><h2>Your live route</h2></div><span className="quote-lock">⌁</span></div>
+          {standaloneOnrampUrl && fundingAsset === "USD" && <div className="quote-content">
+            <div className="quote-result"><span className="result-label">STRIPE HOSTED ONRAMP</span><strong>Ready to open</strong><span className="result-sub">USD → USDC on Ethereum · standalone Stripe flow</span></div>
+            <a className="secondary-button" href={standaloneOnrampUrl} target="_blank" rel="noreferrer">Open crypto.link.com <span>↗</span></a>
+            <div className="standalone-onramp-note"><strong>Use this exact Privy Ethereum wallet</strong><code>{walletAddress}</code><small>The hosted flow is not session-bound to this app. After payment, return here and verify the wallet balance before requesting a quote.</small></div>
+            <button className="secondary-button" onClick={() => void verifyStandaloneFunding()} disabled={loading}>I funded it · refresh Privy balance <span>↻</span></button>
+          </div>}
           {onramp && fundingAsset === "USD" && <div className="quote-content">
             <div className="quote-result"><span className="result-label">STRIPE ONRAMP</span><strong>{onramp.status.replaceAll("_", " ")}</strong><span className="result-sub">USDC → your Privy Ethereum wallet</span></div>
-            {onramp.redirectUrl ? <a className="secondary-button" href={onramp.redirectUrl}>Continue in Stripe Onramp <span>↗</span></a> : <p className="message">Stripe did not return a hosted checkout URL for this session. Contact Stripe Onramp support or switch to USDC funding.</p>}
+            {onramp.redirectUrl ? <a className="secondary-button" href={onramp.redirectUrl}>Continue in Stripe Onramp <span>↗</span></a> : !sandboxMode && <p className="message">Stripe did not return a hosted checkout URL for this session. Contact Stripe Onramp support or switch to USDC funding.</p>}
+            {sandboxMode && <button className="secondary-button" onClick={() => void refreshOnramp()} disabled={loading}>Complete test onramp · no payment <span>✓</span></button>}
             <button className="secondary-button" onClick={() => void refreshOnramp()} disabled={loading}>Refresh Stripe status <span>↻</span></button>
           </div>}
-          {!onramp && !quote && <div className="empty-quote"><div className="empty-orbit">◎</div><h3>Live quote, then live loan.</h3><p>USDC quotes call CoinRabbit and ChangeNOW. USD opens Stripe’s USDC Onramp first.</p><div className="provider-row"><span>Stripe</span><span>→</span><span>CoinRabbit</span><span>→</span><span>ChangeNOW</span></div></div>}
+          {!onramp && !standaloneOnrampUrl && !quote && <div className="empty-quote"><div className="empty-orbit">◎</div><h3>Live quote, then live loan.</h3><p>USDC quotes call CoinRabbit and ChangeNOW. USD opens Stripe’s hosted Onramp first.</p><div className="provider-row"><span>Stripe</span><span>→</span><span>CoinRabbit</span><span>→</span><span>ChangeNOW</span></div></div>}
           {quote && <div className="quote-content">
             <div className="quote-result"><span className="result-label">ESTIMATED DELIVERY</span><strong>{quote.deliveryAmount.toFixed(8)} {quote.deliveryAsset}</strong><span className="result-sub">to your {quote.deliveryAsset} delivery wallet · live provider quote</span></div>
             <div className="breakdown"><div><span>Collateral</span><strong>{quote.fundingAmount.toFixed(2)} {quote.fundingAsset}</strong></div><div><span>Provider route</span><strong>{quote.provider}</strong></div><div><span>Loan proceeds</span><strong>{quote.loanAmount.toFixed(6)} {quote.loanAsset}</strong></div><div><span>Estimated repayment</span><strong>{quote.totalRepayment.toFixed(6)} {quote.repaymentAsset}</strong></div></div>
             <div className="expiry">Quote expires {new Date(quote.expiresAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}<span>LIVE</span></div>
-            {!application ? <div className="loan-confirmation"><label className="consent-row"><input type="checkbox" checked={agreedToTos} onChange={(event) => setAgreedToTos(event.target.checked)} /><span>I agree to the live provider terms and understand this creates a real loan application.</span></label><button className="secondary-button" onClick={() => void startLoan()} disabled={loading || !agreedToTos || !walletReady}>Create CoinRabbit loan + ChangeNOW swap <span>→</span></button>{!walletReady && <small className="action-blocker">The live application stays locked until the exact Privy wallet balance and ETH gas check passes.</small>}</div> : <div className="application-box"><strong>Collateral deposit ready · {application.status || "pending"}</strong><small>{application.collateral.depositAddress || "Waiting for provider address"}</small><small>Route: CoinRabbit collateral{application.swap ? ` → ChangeNOW (${application.swap.status || "awaiting deposit"})` : " → direct delivery"}</small>{application.collateralTxHash && <small>Collateral transaction: {application.collateralTxHash}</small>}<button className="secondary-button" onClick={() => void sendCollateral()} disabled={loading || Boolean(application.collateralTxHash)}>{application.collateralTxHash ? "Collateral submitted" : "Send USDC collateral"} <span>↗</span></button><button className="secondary-button" onClick={() => void refreshLoanStatus()} disabled={loading}>Refresh provider status <span>↻</span></button></div>}
+            {!application ? <div className="loan-confirmation"><label className="consent-row"><input type="checkbox" checked={agreedToTos} onChange={(event) => setAgreedToTos(event.target.checked)} /><span>{sandboxMode ? "I understand this runs synthetic Stripe, CoinRabbit, and ChangeNOW fixtures and moves no funds." : "I agree to the live provider terms and understand this creates a real loan application."}</span></label><button className="secondary-button" onClick={() => void startLoan()} disabled={loading || !agreedToTos || !walletReady}>{sandboxMode ? "Create sandbox loan + swap" : "Create CoinRabbit loan + ChangeNOW swap"} <span>→</span></button>{!walletReady && <small className="action-blocker">The {sandboxMode ? "sandbox" : "live"} application stays locked until the exact Privy wallet balance and ETH gas check passes.</small>}</div> : <div className="application-box"><strong>Collateral deposit ready · {application.status || "pending"}</strong><small>{application.collateral.depositAddress || "Waiting for provider address"}</small><small>Route: CoinRabbit collateral{application.swap ? ` → ChangeNOW (${application.swap.status || "awaiting deposit"})` : " → direct delivery"}</small>{application.collateralTxHash && <small>Collateral transaction: {application.collateralTxHash}</small>}<button className="secondary-button" onClick={() => void sendCollateral()} disabled={loading || Boolean(application.collateralTxHash)}>{application.collateralTxHash ? "Collateral submitted" : sandboxMode ? "Record sandbox collateral" : "Send USDC collateral"} <span>↗</span></button><button className="secondary-button" onClick={() => void refreshLoanStatus()} disabled={loading}>Refresh provider status <span>↻</span></button></div>}
           </div>}
           <div className="trust-note"><span>◆</span> Privy signs user transfers; provider credentials stay in Supabase.</div>
         </div>

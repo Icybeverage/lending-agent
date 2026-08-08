@@ -11,6 +11,18 @@ npm run dev
 
 Open `http://127.0.0.1:4173/lend/`.
 
+### No-payment sandbox
+
+The repository includes a deterministic provider simulator for testing the full UI sequence without sending money, calling Stripe, calling CoinRabbit, calling ChangeNOW, signing with a wallet, or submitting a blockchain transaction.
+
+Run the automated flow check:
+
+```bash
+npm run test:sandbox
+```
+
+To exercise the UI manually, set `VITE_LENDING_SANDBOX=true` in `.env` and run the app with the public `VITE_PRIVY_APP_ID`. The sandbox supplies synthetic balances, a test Stripe completion, CoinRabbit and ChangeNOW fixtures, and a fake collateral hash. The flag is build-time only and must remain `false` for the live deployment.
+
 The UI supports USD or USDC funding selection and all ten delivery assets: BTC, ETH, USDT, USDC, SOL, BNB, XRP, SUI, DOGE, and AVAX. USD uses Stripe Onramp to deliver USDC to the user’s Privy Ethereum wallet before collateral is sent to CoinRabbit.
 
 Set these public frontend variables in a local `.env` or deployment environment:
@@ -18,6 +30,7 @@ Set these public frontend variables in a local `.env` or deployment environment:
 ```text
 VITE_UNIVERSAL_LENDING_URL=https://zcahokqhmmsjpcfrxfly.supabase.co/functions/v1/universal-lending
 VITE_PRIVY_APP_ID=<the public app ID from the Privy dashboard>
+VITE_LENDING_SANDBOX=false
 ```
 
 The Privy app ID is safe for the browser; `privy_app_secret` remains server-only in Supabase. The current live path is USD → Stripe USDC Onramp → Privy Ethereum wallet → CoinRabbit collateral → ChangeNOW delivery. Quotes and provider requests are persisted in Supabase with live loan-create idempotency.
@@ -60,3 +73,5 @@ Final leaderboard registration is a browser-only step at `https://projects.dev/h
 ## Live frontend
 
 The public demo is published from the `gh-pages` branch on GitHub Pages. The build uses the public Privy app ID and the live Supabase Edge Function URL; provider secrets remain only in Supabase.
+
+For live USD funding, `VITE_STRIPE_STANDALONE_ONRAMP=true` opens Stripe's hosted `crypto.link.com` flow with USD → USDC on Ethereum. Because this standalone flow is not bound to our backend session, the user must select the exact Privy Ethereum wallet and refresh the wallet balance before requesting a quote. Set it to `false` only after Stripe API Onramp access is approved and the session-based path is ready.
