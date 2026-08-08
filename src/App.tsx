@@ -41,12 +41,14 @@ type Onramp = {
   clientSecret: string;
   redirectUrl: string | null;
   status: string;
+  walletAddress?: string;
   transactionDetails?: { destination_amount?: string | number | null } | null;
 };
 
 type Application = {
   applicationId?: string;
   loanId: string;
+  fundingWalletAddress?: string;
   status: string | null;
   expectedLoanAmount: string;
   deliveryAddress?: string;
@@ -77,6 +79,7 @@ export default function App() {
   const [repaymentAddress, setRepaymentAddress] = useState("");
   const [quote, setQuote] = useState<Quote | null>(null);
   const [onramp, setOnramp] = useState<Onramp | null>(null);
+  const [completedOnrampSessionId, setCompletedOnrampSessionId] = useState("");
   const [application, setApplication] = useState<Application | null>(null);
   const [agreedToTos, setAgreedToTos] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -109,14 +112,15 @@ export default function App() {
       await login();
       return;
     }
-    if (!effectiveDeliveryAddress) {
-      setMessage("Connect Privy or enter an Ethereum delivery wallet.");
+    if (!walletAddress) {
+      setMessage("Connect your Privy Ethereum wallet before opening Stripe Onramp.");
       return;
     }
     setLoading(true);
     setMessage("");
     try {
-      const payload = await callApi({ action: "onramp", fundingAmount: amount, walletAddress: effectiveDeliveryAddress, repaymentAddress: effectiveRepaymentAddress });
+      setCompletedOnrampSessionId("");
+      const payload = await callApi({ action: "onramp", fundingAmount: amount, walletAddress, repaymentAddress: effectiveRepaymentAddress });
       setOnramp(payload.onramp as Onramp);
       setMessage("Stripe created the USDC purchase session. Complete it, then refresh the session status.");
     } catch (error) {
@@ -138,6 +142,7 @@ export default function App() {
         if (received > 0) {
           setFundingAsset("USDC");
           setAmount(String(received));
+          setCompletedOnrampSessionId(next.sessionId);
           setOnramp(null);
           setMessage(`Stripe delivered ${received} USDC to your Privy wallet. Request a live loan quote next.`);
         } else {
@@ -169,7 +174,7 @@ export default function App() {
     setMessage("");
     try {
       const deliveryNetwork = selectedAsset?.[3] || "ethereum";
-      const payload = await callApi({ action: "quote", fundingAsset, fundingAmount: amount, fundingNetwork: "ETH", deliveryAsset, deliveryNetwork });
+      const payload = await callApi({ action: "quote", fundingAsset, fundingAmount: amount, fundingNetwork: "ETH", deliveryAsset, deliveryNetwork, walletAddress, stripeOnrampSessionId: completedOnrampSessionId || undefined });
       setQuote(payload.quote as Quote);
       setApplication(null);
       setAgreedToTos(false);
@@ -198,10 +203,12 @@ export default function App() {
         fundingAsset: "USDC",
         fundingAmount: quote.fundingAmount,
         fundingNetwork: quote.fundingNetwork,
+        walletAddress,
         deliveryAsset: quote.deliveryAsset,
         deliveryNetwork: quote.deliveryNetwork,
         deliveryAddress: effectiveDeliveryAddress,
         repaymentAddress: effectiveRepaymentAddress,
+        stripeOnrampSessionId: completedOnrampSessionId || undefined,
         agreedToTos: true,
       });
       setApplication(payload.application as Application);
@@ -233,7 +240,7 @@ export default function App() {
       setMessage("Use the returned provider deposit instructions for this network.");
       return;
     }
-    const wallet = wallets.find((candidate) => candidate.address.toLowerCase() === (application.deliveryAddress || "").toLowerCase());
+    const wallet = wallets.find((candidate) => candidate.address.toLowerCase() === (application.fundingWalletAddress || walletAddress).toLowerCase());
     if (!wallet) {
       setMessage("The wallet that received the USDC collateral is not connected. Reconnect that wallet before sending collateral.");
       return;
@@ -282,17 +289,17 @@ export default function App() {
           <div className="panel-heading"><div><span className="step">01</span><h2>Set your funding</h2></div><span className="live-pill">LIVE PROVIDERS</span></div>
           <div className="field-label">I want to fund with</div>
           <div className="segmented">
-            {(["USD", "USDC"] as FundingAsset[]).map((asset) => <button key={asset} className={fundingAsset === asset ? "selected" : ""} onClick={() => { setFundingAsset(asset); setOnramp(null); setQuote(null); setApplication(null); setAgreedToTos(false); }}>{asset}<small>{asset === "USD" ? "Stripe Onramp" : "Privy wallet"}</small></button>)}
+            {(["USD", "USDC"] as FundingAsset[]).map((asset) => <button key={asset} className={fundingAsset === asset ? "selected" : ""} onClick={() => { setFundingAsset(asset); setOnramp(null); setCompletedOnrampSessionId(""); setQuote(null); setApplication(null); setAgreedToTos(false); }}>{asset}<small>{asset === "USD" ? "Stripe Onramp" : "Privy wallet"}</small></button>)}
           </div>
           <label className="field-label" htmlFor="amount">Funding amount</label>
-          <div className="amount-input"><span>{fundingAsset}</span><input id="amount" inputMode="decimal" value={amount} onChange={(event) => { setAmount(event.target.value); setQuote(null); setApplication(null); setAgreedToTos(false); }} /><span className="amount-suffix">≈ ${Number(amount || 0).toLocaleString()}</span></div>
+          <div className="amount-input"><span>{fundingAsset}</span><input id="amount" inputMode="decimal" value={amount} onChange={(event) => { setAmount(event.target.value); setCompletedOnrampSessionId(""); setQuote(null); setApplication(null); setAgreedToTos(false); }} /><span className="amount-suffix">≈ ${Number(amount || 0).toLocaleString()}</span></div>
           <div className="route-details">
             <div className="route-details-heading"><span>SETTLEMENT DETAILS</span><small>USDC collateral on Ethereum</small></div>
             <label className="field-label" htmlFor="delivery-address">Delivery wallet</label>
             <input className="address-input" id="delivery-address" value={deliveryAddress} onChange={(event) => { setDeliveryAddress(event.target.value); setQuote(null); setApplication(null); }} placeholder={walletAddress || "Connect Privy first"} spellCheck={false} />
             <label className="field-label" htmlFor="repayment-address">Repayment / return wallet <span>OPTIONAL</span></label>
             <input className="address-input" id="repayment-address" value={repaymentAddress} onChange={(event) => { setRepaymentAddress(event.target.value); setQuote(null); setApplication(null); setAgreedToTos(false); }} placeholder="Same as Privy Ethereum wallet" spellCheck={false} />
-            <p className="route-note">Stripe delivers USDC to the delivery wallet. Keep USDC for collateral and ETH for network fees before creating the loan.</p>
+            <p className="route-note">Stripe delivers USDC to the same Privy Ethereum wallet it is bound to. Keep USDC for collateral and ETH for network fees before creating the loan.</p>
           </div>
           <div className="field-label asset-label"><span>Deliver to me as</span><span className="asset-count">10 ASSETS</span></div>
           <div className="asset-grid">
