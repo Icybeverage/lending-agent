@@ -224,6 +224,7 @@ export default function App() {
   }
 
   async function logoutWallet() {
+    setLoading(false);
     setShowAddFunds(false);
     setOnramp(null);
     setCompletedOnrampSessionId("");
@@ -233,7 +234,11 @@ export default function App() {
     setBalanceError("");
     setAgreedToTos(false);
     setMessage("");
-    await logout();
+    try {
+      await logout();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Privy could not log out this wallet.");
+    }
   }
 
   async function startOnramp() {
