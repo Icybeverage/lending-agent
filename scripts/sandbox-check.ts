@@ -12,11 +12,11 @@ assert.equal(funded.onramp.status, "fulfillment_complete");
 assert.equal(funded.onramp.transactionDetails.destination_amount, "500");
 
 const quote = await api.call({ action: "quote", fundingAsset: "USDC", fundingAmount: "500", fundingNetwork: "ETH", deliveryAsset: "SUI", deliveryNetwork: "SUI", walletAddress: SANDBOX_WALLET_ADDRESS });
-assert.equal(quote.quote.provider, "CoinRabbit → ChangeNOW");
+assert.equal(quote.quote.routeLabel, "Collateral lender → asset router");
 assert.equal(quote.quote.deliveryAsset, "SUI");
 
 const application = await api.call({ action: "create", quoteId: quote.quote.quoteId, fundingAsset: "USDC", fundingAmount: quote.quote.fundingAmount, fundingNetwork: "ETH", deliveryAsset: "SUI", deliveryNetwork: "SUI", deliveryAddress: `0x${"4".repeat(64)}`, repaymentAddress: SANDBOX_WALLET_ADDRESS, walletAddress: SANDBOX_WALLET_ADDRESS, agreedToTos: true });
-assert.equal(application.application.provider, "CoinRabbit → ChangeNOW");
+assert.equal(application.application.routeLabel, "Collateral lender → asset router");
 assert.equal(application.application.collateral.network, "ETH");
 assert.equal(application.application.swap.status, "waiting");
 
@@ -25,10 +25,10 @@ assert.equal(recorded.collateral.collateralTxHash, SANDBOX_TX_HASH);
 
 const status = await api.call({ action: "status", loanId: application.application.loanId, changeNowId: application.application.swap.id });
 assert.equal(status.loan.status, "collateral_submitted");
-assert.equal(status.swap.status, "waiting_for_coinrabbit");
+assert.equal(status.swap.status, "waiting_for_collateral_lender");
 
 const replay = await api.call({ action: "record_collateral", applicationId: application.application.applicationId, collateralTxHash: SANDBOX_TX_HASH });
 assert.equal(replay.collateral.collateralTxHash, SANDBOX_TX_HASH);
 
-console.log("Sandbox flow passed: Stripe fixture → Privy wallet → CoinRabbit fixture → ChangeNOW fixture → collateral record.");
+console.log("Sandbox flow passed: Stripe fixture → collateral-lender fixture → asset-router fixture → collateral record.");
 console.log("No provider request, wallet signature, blockchain transaction, or payment was made.");

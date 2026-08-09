@@ -2,14 +2,14 @@
 
 ## Project brief
 
-Build a Privy-authenticated universal lending agent with USD or USDC funding selection. Stripe Checkout supports card and crypto funding; the user selects the cryptocurrency they want delivered. Supabase Edge Functions hold the orchestration and provider credentials, while server-side ChangeNOW and CoinRabbit adapters handle quoting and routing.
+Build a Privy-authenticated universal lending agent with USD or USDC funding selection. Stripe Checkout supports card and crypto funding; the user selects the cryptocurrency they want delivered. Supabase Edge Functions hold the orchestration and server-side adapter credentials for lending and asset routing.
 
 Project systems:
 
 - Stripe Project: `lending agent`
 - Existing Supabase project: `hive` (`zcahokqhmmsjpcfrxfly`)
 - Existing Supabase source: `/home/nimbus/supabase`
-- Providers: ChangeNOW and CoinRabbit
+- Server-side integrations: lending and asset-routing adapters
 - Confirmed Privy hackathon code: `privy-home-irl-sf-2026`
 - Product route: `/lend`
 - Participant leaderboard: https://projects.dev/hackathon-participants
@@ -44,7 +44,7 @@ Project systems:
 - [ ] Confirm all Edge Functions deploy to the existing `hive` project, not the accidentally provisioned `lending-agent` Supabase resource.
 - [ ] After confirming no credentials depend on it, request approval before removing the accidentally provisioned `lending-agent` resource and `supabase-plan` from Stripe Projects.
 - [x] Link `/home/nimbus/supabase` to `zcahokqhmmsjpcfrxfly` with the Supabase CLI; remote migration history reconciliation remains before deployment.
-- [ ] Configure local and deployed secrets: Stripe, Privy, ChangeNOW, CoinRabbit, Supabase service role, webhook signing secrets, and encryption keys.
+- [ ] Configure local and deployed secrets: Stripe, Privy, lending and asset-routing adapters, Supabase service role, webhook signing secrets, and encryption keys.
 - [ ] Keep provider secrets server-side; never put them in Vite client variables, logs, screenshots, or the repository.
 
 ## 3. Supabase data model
@@ -59,16 +59,16 @@ Project systems:
 ## 4. Edge Functions and provider routing
 
 - [x] Define the `universal-lending` Supabase Edge Function contract with authenticated operations for quote, create, status, and repay.
-- [x] Implement live `universal-lending` quotes through CoinRabbit and ChangeNOW with server-side credentials.
+- [x] Implement live `universal-lending` quotes through the lending and asset-routing adapters with server-side credentials.
 - [x] Verify Privy bearer tokens server-side for all mutating operations.
 - [x] Add Stripe USDC Onramp session creation/status for USD funding.
-- [x] Add user-approved Privy Ethereum USDC transfer to the CoinRabbit collateral address.
+- [x] Add user-approved Privy Ethereum USDC transfer to the returned collateral address.
 - [ ] Implement `loan-create`: enforce quote expiry and idempotency, create the payment/loan record, and start the provider workflow.
 - [ ] Implement `loan-status`: return the canonical state assembled from persisted records and provider status checks.
 - [ ] Implement `loan-repay`: validate the repayment asset and amount, create the repayment request, and update state only from verified provider/payment events.
-- [ ] Implement provider webhooks for Stripe, ChangeNOW, and CoinRabbit with signature verification and replay protection.
-- [ ] Add adapter interfaces so ChangeNOW and CoinRabbit can be mocked independently in tests.
-- [ ] Keep ChangeNOW and CoinRabbit credentials exclusively in Supabase secrets; no provider key may reach the browser.
+- [ ] Implement provider webhooks for Stripe, lending, and asset-routing services with signature verification and replay protection.
+- [ ] Add adapter interfaces so lending and asset-routing services can be mocked independently in tests.
+- [ ] Keep all external service credentials exclusively in Supabase secrets; no provider key may reach the browser.
 - [ ] Add timeouts, bounded retries, backoff, circuit breaking, and a manual-review state for ambiguous provider responses.
 - [ ] Persist raw provider response metadata only when safe; redact addresses, tokens, and secrets from logs.
 - [ ] Return normalized errors that are useful to the UI without leaking provider or secret details.
@@ -84,12 +84,12 @@ Project systems:
 
 ## 6. Frontend and demo surface
 
-- [x] Add the `/lend` universal lending UI with Privy auth, USD/USDC selection, ten-asset picker, live quotes, and provider explanation.
+- [x] Add the `/lend` universal lending UI with Privy auth, USD/USDC selection, ten-asset picker, live quotes, and route explanation.
 - [x] Apply the MIT-licensed Vite/React shadcn dashboard template as the visual reference and publish the responsive site.
 - [ ] Show the routing decision and quote breakdown in plain language so judges can understand the backend orchestration.
 - [ ] Add a demo mode that uses deterministic provider fixtures and clearly labels simulated transactions.
 - [ ] Add accessibility, responsive mobile layout, loading states, retry actions, and transaction links where available.
-- [ ] Add a short “how it works” panel covering Privy, Stripe, Supabase, ChangeNOW, and CoinRabbit.
+- [ ] Add a short “how it works” panel covering Privy, Stripe, Supabase, lending, and asset routing.
 
 ## 7. Security, compliance, and reliability
 
@@ -119,7 +119,7 @@ Project systems:
 ## Definition of done
 
 - [ ] A new user can authenticate with Privy, request a supported loan, understand the quote, complete the supported payment flow, and track the resulting state.
-- [ ] All ChangeNOW, CoinRabbit, Stripe, and Supabase secrets remain server-side.
+- [ ] All external-service, Stripe, and Supabase secrets remain server-side.
 - [ ] The demo can run end-to-end with deterministic mocks even if a provider is unavailable.
 - [ ] Production behavior never reports a loan as funded until a verified backend event confirms it.
 - [ ] The submission clearly identifies what is live, what is simulated, and how Privy enables the wallet experience.

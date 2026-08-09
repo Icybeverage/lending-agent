@@ -25,7 +25,6 @@ type Quote = {
   deliveryAsset: string;
   deliveryNetwork: string;
   deliveryAmount: number;
-  provider: string;
   providerFee: number;
   networkFee: number;
   totalRepayment: number;
@@ -249,9 +248,7 @@ export default function App() {
     const response = await fetch(endpoint, { method: "POST", headers, body: JSON.stringify(body) });
     const payload = await response.json().catch(() => null);
     if (!response.ok) {
-      const provider = typeof payload?.provider === "string" ? `${payload.provider}: ` : "";
-      const providerCode = typeof payload?.providerCode === "string" ? ` (${payload.providerCode})` : "";
-      throw new Error(`${provider}${payload?.error || "The lending service rejected the request."}${providerCode}`);
+      throw new Error(payload?.error || "The lending service rejected the request.");
     }
     return payload;
   }
@@ -440,7 +437,7 @@ export default function App() {
         agreedToTos: true,
       });
       setApplication(payload.application as Application);
-      setMessage("The live CoinRabbit loan and ChangeNOW route are ready. Send the requested USDC collateral.");
+      setMessage("The live lending and asset-delivery route is ready. Send the requested USDC collateral.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Unable to start the live loan.");
     } finally {
@@ -496,7 +493,7 @@ export default function App() {
       return;
     }
     if (!/^0x[a-fA-F0-9]{40}$/.test(application.collateral.depositAddress)) {
-      setMessage("CoinRabbit returned an invalid Ethereum deposit address. Do not send collateral.");
+      setMessage("The lending service returned an invalid Ethereum deposit address. Do not send collateral.");
       return;
     }
     const currentBalances = await refreshBalances();
@@ -544,7 +541,7 @@ export default function App() {
       <section className="hero">
         <div className="eyebrow">UNIVERSAL LENDING · PRIVY HACKATHON</div>
         <h1>Fund in dollars.<br /><em>Receive any asset.</em></h1>
-        <p className="hero-copy">Stripe moves dollars into your Privy wallet as USDC. CoinRabbit creates the loan, and ChangeNOW routes the proceeds to the asset you choose.</p>
+        <p className="hero-copy">Stripe moves dollars into your Privy wallet as USDC. A server-side lending route creates the loan and delivers the asset you choose.</p>
       </section>
 
       <section className="workspace">
@@ -579,7 +576,7 @@ export default function App() {
           <div className="asset-grid">
             {deliveryAssets.map(([symbol, name, color]) => <button key={symbol} className={`asset-card ${deliveryAsset === symbol ? "selected" : ""}`} onClick={() => { setDeliveryAsset(symbol); setQuote(null); setApplication(null); setAgreedToTos(false); }}><span className="asset-icon" style={{ background: `${color}20`, color }}>{symbol.slice(0, 1)}</span><span><strong>{symbol}</strong><small>{name}</small></span></button>)}
           </div>
-          <button className="primary-button" onClick={() => void getQuote()} disabled={loading}>{loading ? "Calling live providers…" : fundingAsset === "USD" ? "Open Stripe USDC Onramp" : `Get ${selectedAsset?.[0] ?? deliveryAsset} quote`}<span>→</span></button>
+          <button className="primary-button" onClick={() => void getQuote()} disabled={loading}>{loading ? "Calling live routing services…" : fundingAsset === "USD" ? "Open Stripe USDC Onramp" : `Get ${selectedAsset?.[0] ?? deliveryAsset} quote`}<span>→</span></button>
           {message && <p className="message">{message}</p>}
         </div>
 
@@ -597,12 +594,12 @@ export default function App() {
             {sandboxMode && <button className="secondary-button" onClick={() => void refreshOnramp()} disabled={loading}>Complete test onramp · no payment <span>✓</span></button>}
             <button className="secondary-button" onClick={() => void refreshOnramp()} disabled={loading}>Refresh Stripe status <span>↻</span></button>
           </div>}
-          {!onramp && !standaloneOnrampUrl && !quote && <div className="empty-quote"><div className="empty-orbit">◎</div><h3>Live quote, then live loan.</h3><p>USDC quotes call CoinRabbit and ChangeNOW. USD opens Stripe’s hosted Onramp first.</p><div className="provider-row"><span>Stripe</span><span>→</span><span>CoinRabbit</span><span>→</span><span>ChangeNOW</span></div></div>}
+          {!onramp && !standaloneOnrampUrl && !quote && <div className="empty-quote"><div className="empty-orbit">◎</div><h3>Live quote, then live loan.</h3><p>USDC quotes use a server-side lending and asset-delivery route. USD opens Stripe’s hosted Onramp first.</p><div className="provider-row"><span>Stripe</span><span>→</span><span>Collateral lender</span><span>→</span><span>Asset router</span></div></div>}
           {quote && <div className="quote-content">
             <div className="quote-result"><span className="result-label">ESTIMATED DELIVERY</span><strong>{quote.deliveryAmount.toFixed(8)} {quote.deliveryAsset}</strong><span className="result-sub">to your {quote.deliveryAsset} delivery wallet · live provider quote</span></div>
-            <div className="breakdown"><div><span>Collateral</span><strong>{quote.fundingAmount.toFixed(2)} {quote.fundingAsset}</strong></div><div><span>Provider route</span><strong>{quote.provider}</strong></div><div><span>Loan proceeds</span><strong>{quote.loanAmount.toFixed(6)} {quote.loanAsset}</strong></div><div><span>Estimated repayment</span><strong>{quote.totalRepayment.toFixed(6)} {quote.repaymentAsset}</strong></div></div>
+            <div className="breakdown"><div><span>Collateral</span><strong>{quote.fundingAmount.toFixed(2)} {quote.fundingAsset}</strong></div><div><span>Provider route</span><strong>Collateral lender → asset router</strong></div><div><span>Loan proceeds</span><strong>{quote.loanAmount.toFixed(6)} {quote.loanAsset}</strong></div><div><span>Estimated repayment</span><strong>{quote.totalRepayment.toFixed(6)} {quote.repaymentAsset}</strong></div></div>
             <div className="expiry">Quote expires {new Date(quote.expiresAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}<span>LIVE</span></div>
-            {!application ? <div className="loan-confirmation"><label className="consent-row"><input type="checkbox" checked={agreedToTos} onChange={(event) => setAgreedToTos(event.target.checked)} /><span>{sandboxMode ? "I understand this runs synthetic Stripe, CoinRabbit, and ChangeNOW fixtures and moves no funds." : "I agree to the live provider terms and understand this creates a real loan application."}</span></label><button className="secondary-button" onClick={() => void startLoan()} disabled={loading || !agreedToTos || !walletReady}>{sandboxMode ? "Create sandbox loan + swap" : "Create CoinRabbit loan + ChangeNOW swap"} <span>→</span></button>{!walletReady && <small className="action-blocker">The {sandboxMode ? "sandbox" : "live"} application stays locked until the exact Privy wallet balance and ETH gas check passes.</small>}</div> : <div className="application-box"><strong>Collateral deposit ready · {application.status || "pending"}</strong><small>{application.collateral.depositAddress || "Waiting for provider address"}</small><small>Route: CoinRabbit collateral{application.swap ? ` → ChangeNOW (${application.swap.status || "awaiting deposit"})` : " → direct delivery"}</small>{application.collateralTxHash && <small>Collateral transaction: {application.collateralTxHash}</small>}<button className="secondary-button" onClick={() => void sendCollateral()} disabled={loading || Boolean(application.collateralTxHash)}>{application.collateralTxHash ? "Collateral submitted" : sandboxMode ? "Record sandbox collateral" : "Send USDC collateral"} <span>↗</span></button><button className="secondary-button" onClick={() => void refreshLoanStatus()} disabled={loading}>Refresh provider status <span>↻</span></button></div>}
+            {!application ? <div className="loan-confirmation"><label className="consent-row"><input type="checkbox" checked={agreedToTos} onChange={(event) => setAgreedToTos(event.target.checked)} /><span>{sandboxMode ? "I understand this runs synthetic routing fixtures and moves no funds." : "I agree to the live provider terms and understand this creates a real loan application."}</span></label><button className="secondary-button" onClick={() => void startLoan()} disabled={loading || !agreedToTos || !walletReady}>{sandboxMode ? "Create sandbox loan + swap" : "Create live loan + asset route"} <span>→</span></button>{!walletReady && <small className="action-blocker">The {sandboxMode ? "sandbox" : "live"} application stays locked until the exact Privy wallet balance and ETH gas check passes.</small>}</div> : <div className="application-box"><strong>Collateral deposit ready · {application.status || "pending"}</strong><small>{application.collateral.depositAddress || "Waiting for provider address"}</small><small>Route: collateral lender{application.swap ? ` → asset router (${application.swap.status || "awaiting deposit"})` : " → direct delivery"}</small>{application.collateralTxHash && <small>Collateral transaction: {application.collateralTxHash}</small>}<button className="secondary-button" onClick={() => void sendCollateral()} disabled={loading || Boolean(application.collateralTxHash)}>{application.collateralTxHash ? "Collateral submitted" : sandboxMode ? "Record sandbox collateral" : "Send USDC collateral"} <span>↗</span></button><button className="secondary-button" onClick={() => void refreshLoanStatus()} disabled={loading}>Refresh route status <span>↻</span></button></div>}
           </div>}
           <div className="trust-note"><span>◆</span> Privy signs user transfers; provider credentials stay in Supabase.</div>
         </div>

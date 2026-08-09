@@ -1,6 +1,6 @@
 # Lending Agent
 
-CLI-first lending flow for the Privy hackathon project. The `/lend` surface uses live CoinRabbit and ChangeNOW provider calls. USD funding opens a Stripe USDC Onramp session; USDC funding starts directly from the user’s Privy wallet.
+CLI-first lending flow for the Privy hackathon project. The `/lend` surface uses server-side lending and asset-routing services. USD funding opens a Stripe USDC Onramp session; USDC funding starts directly from the user’s Privy wallet.
 
 ## Local app
 
@@ -13,7 +13,7 @@ Open `http://127.0.0.1:4173/lend/`.
 
 ### No-payment sandbox
 
-The repository includes a deterministic provider simulator for testing the full UI sequence without sending money, calling Stripe, calling CoinRabbit, calling ChangeNOW, signing with a wallet, or submitting a blockchain transaction.
+The repository includes a deterministic routing simulator for testing the full UI sequence without sending money, calling Stripe, calling external services, signing with a wallet, or submitting a blockchain transaction.
 
 Run the automated flow check:
 
@@ -21,9 +21,9 @@ Run the automated flow check:
 npm run test:sandbox
 ```
 
-To exercise the UI manually, set `VITE_LENDING_SANDBOX=true` in `.env` and run the app with the public `VITE_PRIVY_APP_ID`. The sandbox supplies synthetic balances, a test Stripe completion, CoinRabbit and ChangeNOW fixtures, and a fake collateral hash. The flag is build-time only and must remain `false` for the live deployment.
+To exercise the UI manually, set `VITE_LENDING_SANDBOX=true` in `.env` and run the app with the public `VITE_PRIVY_APP_ID`. The sandbox supplies synthetic balances, a test Stripe completion, lending and asset-routing fixtures, and a fake collateral hash. The flag is build-time only and must remain `false` for the live deployment.
 
-The UI supports USD or USDC funding selection and all ten delivery assets: BTC, ETH, USDT, USDC, SOL, BNB, XRP, SUI, DOGE, and AVAX. USD uses Stripe Onramp to deliver USDC to the user’s Privy Ethereum wallet before collateral is sent to CoinRabbit.
+The UI supports USD or USDC funding selection and all ten delivery assets: BTC, ETH, USDT, USDC, SOL, BNB, XRP, SUI, DOGE, and AVAX. USD uses Stripe Onramp to deliver USDC to the user’s Privy Ethereum wallet before collateral is sent through the server-side lending route.
 
 Set these public frontend variables in a local `.env` or deployment environment:
 
@@ -33,7 +33,7 @@ VITE_PRIVY_APP_ID=<the public app ID from the Privy dashboard>
 VITE_LENDING_SANDBOX=false
 ```
 
-The Privy app ID is safe for the browser; `privy_app_secret` remains server-only in Supabase. The current live path is USD → Stripe USDC Onramp → Privy Ethereum wallet → CoinRabbit collateral → ChangeNOW delivery. Quotes and provider requests are persisted in Supabase with live loan-create idempotency.
+The Privy app ID is safe for the browser; `privy_app_secret` remains server-only in Supabase. The current live path is USD → Stripe USDC Onramp → Privy Ethereum wallet → collateral lender → asset delivery. Quotes and provider requests are persisted in Supabase with live loan-create idempotency.
 
 ## Supabase backend
 
@@ -52,13 +52,7 @@ The dry run must be reconciled with the remote migration history before applying
 supabase functions deploy universal-lending --use-api
 ```
 
-Provider secrets belong in Supabase, not in this repository:
-
-- `CHANGENOW_API_KEY`
-- `privy_app_id`, `privy_app_secret`
-- `STRIPE_SECRET_KEY`
-- `coinrabbit_api_key`
-- `APP_ORIGIN`
+Provider secrets belong in Supabase, not in this repository. Configure the server-side adapter credentials required by `universal-lending`; no provider credential is exposed to the browser.
 
 ## Stripe Projects
 

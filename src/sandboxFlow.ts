@@ -30,7 +30,7 @@ type SandboxApplication = {
   };
   swap: { id: string; payinAddress: string; status: string };
   collateralTxHash?: string;
-  provider: "CoinRabbit → ChangeNOW";
+  routeLabel: "Collateral lender → asset router";
   nextStep: string;
 };
 
@@ -81,7 +81,7 @@ export function createSandboxApi() {
           deliveryAsset,
           deliveryNetwork: String(input.deliveryNetwork || "ETH").toUpperCase(),
           deliveryAmount: loanAmount * deliveryRate(deliveryAsset),
-          provider: "CoinRabbit → ChangeNOW",
+          routeLabel: "Collateral lender → asset router",
           providerFee: loanAmount * 0.05,
           networkFee: 0,
           totalRepayment: loanAmount * 1.05,
@@ -107,14 +107,14 @@ export function createSandboxApi() {
           repaymentAddress: String(input.repaymentAddress || SANDBOX_WALLET_ADDRESS),
           collateral: { asset: "USDC", network: "ETH", amount: String(quote.fundingAmount), depositAddress: SANDBOX_COLLATERAL_ADDRESS, depositExtraId: null },
           swap: { id: "sandbox_swap_001", payinAddress: "0x3333333333333333333333333333333333333333", status: "waiting" },
-          provider: "CoinRabbit → ChangeNOW",
+          routeLabel: "Collateral lender → asset router",
           nextStep: "Sandbox only: record the synthetic collateral; no funds move.",
         };
         return { ok: true, application };
       }
       if (action === "record_collateral") {
         if (!application || application.applicationId !== input.applicationId) throw new Error("Sandbox application not found.");
-        application = { ...application, status: "collateral_submitted", collateralTxHash: String(input.collateralTxHash || SANDBOX_TX_HASH), swap: { ...application.swap, status: "waiting_for_coinrabbit" } };
+        application = { ...application, status: "collateral_submitted", collateralTxHash: String(input.collateralTxHash || SANDBOX_TX_HASH), swap: { ...application.swap, status: "waiting_for_collateral_lender" } };
         return { ok: true, collateral: { applicationId: application.applicationId, collateralTxHash: application.collateralTxHash } };
       }
       if (action === "status" && input.loanId) {
